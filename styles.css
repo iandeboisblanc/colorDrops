@@ -1,0 +1,24 @@
+body {
+  background-color: #454545;
+}
+
+.board {
+  background-color: rgb(0,20,50);
+  border: 5px solid black;
+  border-radius: 10px;
+  margin-left: 10px;
+  min-width: 100px;
+  /*width: 95vw;*/
+  min-height: 100px;
+  /*height: 95vh;*/
+}
+
+circle {
+  /*stroke: white;*/
+  stroke-width: 3px;
+  /*transition: all 0.01s;*/
+}
+
+
+
+
