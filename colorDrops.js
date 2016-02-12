@@ -1,10 +1,10 @@
 //settings
 var settings = {
   colorStep: 50,
-  airResistance: 0,  //between 0 and 1, for velocity loss
+  airResistance: 0.005,  //between 0 and 1, for velocity loss
   wallLoss: 0.05,    //between 0 and 1, for vel loss on wall hit
   collisionLoss: 0.1, //between 0 and 1, for vel loss on other drop hit    
-  stepTime: 5,
+  stepTime: 7,
   G: 0.01,
   width: window.innerWidth - 40,
   height: window.innerHeight - 40,
@@ -93,10 +93,12 @@ function createDropsData() {
     for(var j = 0; j <= 255; j += settings.colorStep) {
       for(var k = 0; k <= 255; k+= settings.colorStep) {
         var dropData = {
+          id: floor(random() * 10000000),
           position: {},
           velocity: {},
           radius: 10,
           color: {r:i, g:j, b:k},
+          childrenData: [],
           beingDragged: false
         };
         var positionIndex = floor(random() * possibleStartingPositions.length);
@@ -113,7 +115,7 @@ function createDropsData() {
 
 function generateDrops() {
   d3.select('.board').selectAll('circle')
-    .data(drops)
+    .data(drops, function(d) {return d.id;})
     .enter()
     .append('circle')
     .attr('cx', function(d) {
@@ -171,14 +173,15 @@ function detectCollisions() {
       var drop2 = drops[j];
       if(findDistance(drop1.position, drop2.position) <= drop1.radius + drop2.radius) {
         //collision!
-        if(collisions['' + i + j]) {
-          var time = new Date().getTime() - collisions['' + i + j];
-          if(time > 10000) {
+        if(collisions[drop1.id + '' + drop2.id]) {
+          var time = new Date().getTime() - collisions[drop1.id + '' + drop2.id];
+          if(time > 5000) {
             //merge
-            console.log('Merging', i, j);
+            console.log('merging', drop1.id + '' + drop2.id);
+            dropMerge(i,j);
           }
         } else {
-          collisions['' + i + j] = new Date().getTime();
+          collisions[drop1.id + '' + drop2.id] = new Date().getTime();
         }
         var dX = drop2.position.x - drop1.position.x;
         var dY = drop2.position.y - drop1.position.y;
@@ -195,13 +198,38 @@ function detectCollisions() {
         drop2.velocity.x = tempVX;
         drop2.velocity.y = tempVY;
       } else {
-        if(collisions['' + i + j]) {
+        if(collisions[drop1.id + '' + drop2.id]) {
           //end of collision
-          collisions['' + i + j] = undefined;
+          collisions[drop1.id + '' + drop2.id] = undefined;
         }
       }
     }
   }
+}
+
+function dropMerge(index1, index2) {
+  drop1 = drops.splice(index1,1)[0];
+  drop2 = drops.splice(index2 - 1,1)[0];
+  var newDrop = {
+    id: floor(random() * 10000000),
+    position: {
+      x: floor((drop1.position.x + drop2.position.x)/2),
+      y: floor((drop1.position.y + drop2.position.y)/2)
+    },
+    velocity: {
+      x: floor((drop1.velocity.x + drop2.velocity.x)/2),
+      y: floor((drop1.velocity.y + drop2.velocity.y)/2)
+    },
+    radius: max(drop1.radius, drop2.radius) + min(drop1.radius, drop2.radius) * 0.5,
+    color: {
+      r:floor((drop1.color.r + drop2.color.r)/ 2), 
+      g:floor((drop1.color.g + drop2.color.g)/ 2), 
+      b:floor((drop1.color.b + drop2.color.b)/ 2)
+    },
+    childrenData: [drop1, drop2].concat(drop1.childrenData).concat(drop2.childrenData),
+    beingDragged: false
+  };
+  drops.push(newDrop);
 }
 
 function updateDropPositions() {
@@ -222,14 +250,30 @@ function updateDropPositions() {
       drop.velocity.y *= 1 - (settings.airResistance);
     }
   }
-  d3.select('.board').selectAll('circle')
-    .data(drops)
-    .attr('cx', function(d) {
+  var d3Drops = d3.select('.board').selectAll('circle')
+    .data(drops, function(d) {return d.id;});
+  //enter:
+  d3Drops.enter()
+    .append('circle')
+    .attr('r', function(d) {
+      return d.radius;
+    })
+    .attr('fill', function(d) {
+      return 'rgb(' + d.color.r + ',' + d.color.g + ',' + d.color.b + ')';
+    })
+    .attr('stroke', function(d) {
+      return 'rgba(' + d.color.r + ',' + d.color.g + ',' + d.color.b + ', 0.5)';
+    })
+    .call(drag);
+  //update:
+  d3Drops.attr('cx', function(d) {
       return d.position.x;
     })
     .attr('cy', function(d) {
       return d.position.y;
     });
+  //remove
+  d3Drops.exit().remove();
 }
 
 function resize() {
