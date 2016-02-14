@@ -255,9 +255,13 @@ function updateDropPositions() {
   //enter:
   d3Drops.enter()
     .append('circle')
-    .attr('r', function(d) {
-      return d.radius;
+    .attr('cx', function(d) {
+      return d.position.x;
     })
+    .attr('cy', function(d) {
+      return d.position.y;
+    })
+    .attr('r', function(d) {return max(d.childrenData[0].radius, d.childrenData[1].radius)})
     .attr('fill', function(d) {
       return 'rgb(' + d.color.r + ',' + d.color.g + ',' + d.color.b + ')';
     })
@@ -265,6 +269,13 @@ function updateDropPositions() {
       return 'rgba(' + d.color.r + ',' + d.color.g + ',' + d.color.b + ', 0.5)';
     })
     .call(drag);
+
+  d3Drops.transition()
+    .duration(100)
+    .attr('r', function(d) {
+      return d.radius;
+    })
+    
   //update:
   d3Drops.attr('cx', function(d) {
       return d.position.x;
